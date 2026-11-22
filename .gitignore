@@ -1,0 +1,10 @@
+# Bỏ qua môi trường ảo (máy khác tự cài lại bằng requirements.txt)
+.venv/
+
+# Bỏ qua file biên dịch tạm của Python
+__pycache__/
+*.pyc
+
+# Bỏ qua file biên dịch tạm của Python
+db.sqlite3
+.env
