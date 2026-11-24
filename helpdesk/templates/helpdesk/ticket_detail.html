@@ -1,0 +1,83 @@
+{% extends 'helpdesk/base.html' %}
+
+{% block title %}{{ ticket.code }} - IT Helpdesk{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <a href="{% url 'ticket_list' %}" class="text-decoration-none small">&larr; Quay lại danh sách</a>
+        <h3 class="mb-0 mt-1">{{ ticket.code }}: {{ ticket.title }}</h3>
+    </div>
+    <span class="badge bg-primary fs-6">{{ ticket.get_status_display }}</span>
+</div>
+
+<div class="row g-4">
+    <!-- Cột trái: Thông tin chi tiết và Lịch sử xử lý -->
+    <div class="col-md-7">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold">Thông tin yêu cầu</div>
+            <div class="card-body">
+                <p><strong>Danh mục:</strong> {{ ticket.category.name }}</p>
+                <p><strong>Người gửi:</strong> {{ ticket.created_by.username }}</p>
+                <p><strong>Kỹ thuật viên:</strong> {{ ticket.assigned_to.username|default:"Chưa giao" }}</p>
+                <p><strong>Hạn xử lý:</strong> {{ ticket.due_date|date:"d/m/Y"|default:"Chưa đặt" }}</p>
+                <p><strong>Thời gian tạo:</strong> {{ ticket.created_at|date:"d/m/Y H:i" }}</p>
+                <hr>
+                <p class="fw-semibold mb-1">Mô tả sự cố:</p>
+                <div class="bg-light p-3 rounded">{{ ticket.description|linebreaks }}</div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-white fw-semibold">Lịch sử xử lý</div>
+            <ul class="list-group list-group-flush">
+                {% for item in histories %}
+                <li class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <strong>{{ item.action }}</strong>
+                        <small class="text-muted">{{ item.created_at|date:"d/m/Y H:i" }}</small>
+                    </div>
+                    <div class="small text-secondary">
+                        Người thực hiện: {{ item.actor.username }}
+                        {% if item.from_status %}
+                            | {{ item.from_status }} &rarr; {{ item.to_status }}
+                        {% else %}
+                            | Trạng thái: {{ item.to_status }}
+                        {% endif %}
+                    </div>
+                    {% if item.note %}
+                    <div class="small mt-1 fst-italic">Ghi chú: {{ item.note }}</div>
+                    {% endif %}
+                </li>
+                {% empty %}
+                <li class="list-group-item text-muted text-center">Chưa có lịch sử.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Cột phải: Form phân công và chuyển trạng thái -->
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white fw-semibold">Cập nhật xử lý</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label fw-semibold">
+                            {{ field.label }}
+                        </label>
+                        {{ field }}
+                        {% if field.errors %}
+                        <div class="text-danger small mt-1">{{ field.errors|striptags }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary w-100">Lưu cập nhật</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

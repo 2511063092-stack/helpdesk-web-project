@@ -26,7 +26,12 @@
             <tbody>
                 {% for ticket in tickets %}
                 <tr>
-                    <td class="fw-bold text-primary">{{ ticket.code }}</td>
+                    <!-- Gắn link trỏ tới trang chi tiết theo ID của yêu cầu -->
+                    <td class="fw-bold">
+                        <a href="{% url 'ticket_detail' ticket.pk %}" class="text-decoration-none">
+                            {{ ticket.code }}
+                        </a>
+                    </td>
                     <td>{{ ticket.title }}</td>
                     <td>{{ ticket.category.name }}</td>
                     <td>{{ ticket.created_by.username }}</td>
