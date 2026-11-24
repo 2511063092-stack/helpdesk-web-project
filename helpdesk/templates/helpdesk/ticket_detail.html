@@ -56,11 +56,12 @@
         </div>
     </div>
 
-    <!-- Cột phải: Form phân công và chuyển trạng thái -->
+    <!-- Cột phải: Form cập nhật xử lý (chỉ hiện khi có quyền) -->
     <div class="col-md-5">
         <div class="card shadow-sm">
             <div class="card-header bg-white fw-semibold">Cập nhật xử lý</div>
             <div class="card-body">
+                {% if can_update %}
                 <form method="post">
                     {% csrf_token %}
                     {% for field in form %}
@@ -76,6 +77,12 @@
                     {% endfor %}
                     <button type="submit" class="btn btn-primary w-100">Lưu cập nhật</button>
                 </form>
+                {% else %}
+                <p class="text-muted mb-0 small">
+                    Bạn đang xem ở chế độ theo dõi. Chỉ <strong>Quản lý</strong> hoặc
+                    <strong>Kỹ thuật viên được phân công</strong> mới có quyền cập nhật trạng thái.
+                </p>
+                {% endif %}
             </div>
         </div>
     </div>

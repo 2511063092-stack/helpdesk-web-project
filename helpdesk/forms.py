@@ -1,5 +1,6 @@
 from django import forms
-from .models import Ticket
+
+from .models import Ticket, User
 
 # Quy định luồng chuyển trạng thái hợp lệ của một yêu cầu
 ALLOWED_TRANSITIONS = {
@@ -40,7 +41,6 @@ class TicketUpdateForm(forms.ModelForm):
         widgets = {
             'assigned_to': forms.Select(attrs={'class': 'form-select'}),
             'status': forms.Select(attrs={'class': 'form-select'}),
-            # format='%Y-%m-%d' bắt buộc để input type="date" hiển thị đúng ngày đã lưu
             'due_date': forms.DateInput(
                 format='%Y-%m-%d',
                 attrs={'type': 'date', 'class': 'form-control'},
@@ -52,9 +52,15 @@ class TicketUpdateForm(forms.ModelForm):
             }),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
-        # Giới hạn danh sách trạng thái trong dropdown theo đúng luồng hợp lệ
+
+        # Chỉ cho phép phân công cho Kỹ thuật viên hoặc Quản lý
+        self.fields['assigned_to'].queryset = User.objects.filter(
+            role__in=[User.Role.TECH, User.Role.MANAGER]
+        )
+
+        # Giới hạn trạng thái tiếp theo đúng theo luồng hợp lệ
         if self.instance and self.instance.pk:
             current = self.instance.status
             valid_statuses = [current] + ALLOWED_TRANSITIONS.get(current, [])
@@ -63,3 +69,8 @@ class TicketUpdateForm(forms.ModelForm):
                 for val, label in Ticket.Status.choices
                 if val in valid_statuses
             ]
+
+        # Kỹ thuật viên không được phép tự đổi người phụ trách hoặc hạn xử lý
+        if user and user.role == User.Role.TECH and not user.is_superuser:
+            self.fields.pop('assigned_to', None)
+            self.fields.pop('due_date', None)

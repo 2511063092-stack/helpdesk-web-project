@@ -1,17 +1,49 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import TicketCreateForm, TicketUpdateForm
-from .models import Notification, Ticket, TicketHistory
+from .models import Notification, Ticket, TicketHistory, User
+
+
+def _is_manager(user):
+    """Kiểm tra người dùng có quyền Quản lý (hoặc Superuser) không."""
+    return user.is_superuser or user.role == User.Role.MANAGER
+
+
+def _can_view_ticket(user, ticket):
+    """Kiểm tra quyền xem chi tiết một yêu cầu cụ thể."""
+    if _is_manager(user):
+        return True
+    if user.role == User.Role.TECH:
+        return ticket.assigned_to == user or ticket.created_by == user
+    return ticket.created_by == user
+
+
+def _can_update_ticket(user, ticket):
+    """Kiểm tra quyền phân công hoặc cập nhật trạng thái xử lý."""
+    if _is_manager(user):
+        return True
+    return user.role == User.Role.TECH and ticket.assigned_to == user
 
 
 @login_required
 def ticket_list(request):
-    """Lấy danh sách yêu cầu mới nhất và hiển thị ra giao diện."""
+    """Hiển thị danh sách yêu cầu theo đúng phạm vi quyền của từng vai trò."""
     tickets = Ticket.objects.select_related(
         'category', 'created_by', 'assigned_to'
     ).order_by('-created_at')
+
+    user = request.user
+    if not _is_manager(user):
+        if user.role == User.Role.TECH:
+            # Kỹ thuật viên xem phiếu được giao HOẶC phiếu tự gửi
+            tickets = tickets.filter(Q(assigned_to=user) | Q(created_by=user))
+        else:
+            # Nhân viên chỉ xem phiếu do chính mình gửi
+            tickets = tickets.filter(created_by=user)
 
     return render(request, 'helpdesk/ticket_list.html', {'tickets': tickets})
 
@@ -23,7 +55,6 @@ def ticket_create(request):
         form = TicketCreateForm(request.POST)
         if form.is_valid():
             ticket = form.save(commit=False)
-            # Gán trực tiếp người gửi là tài khoản đang đăng nhập
             ticket.created_by = request.user
             ticket.save()
 
@@ -45,18 +76,28 @@ def ticket_create(request):
 
 @login_required
 def ticket_detail(request, pk):
-    """Xem chi tiết một yêu cầu, lịch sử xử lý và cập nhật trạng thái."""
+    """Xem chi tiết yêu cầu, kiểm tra phân quyền xem và cập nhật trạng thái."""
     ticket = get_object_or_404(
         Ticket.objects.select_related('category', 'created_by', 'assigned_to'),
         pk=pk,
     )
+
+    # Lớp bảo vệ 1: Chặn xem trộm phiếu không thuộc phạm vi quyền (trả về lỗi 403)
+    if not _can_view_ticket(request.user, ticket):
+        raise PermissionDenied('Bạn không có quyền xem yêu cầu này.')
+
+    can_update = _can_update_ticket(request.user, ticket)
     histories = ticket.histories.select_related('actor').order_by('-created_at')
 
     if request.method == 'POST':
+        # Lớp bảo vệ 2: Chặn gửi lệnh POST trái phép nếu không có quyền cập nhật
+        if not can_update:
+            raise PermissionDenied('Bạn không có quyền cập nhật yêu cầu này.')
+
         old_status = ticket.status
         old_assignee = ticket.assigned_to
 
-        form = TicketUpdateForm(request.POST, instance=ticket)
+        form = TicketUpdateForm(request.POST, instance=ticket, user=request.user)
         if form.is_valid():
             updated_ticket = form.save()
 
@@ -85,10 +126,15 @@ def ticket_detail(request, pk):
             messages.success(request, f'Đã cập nhật yêu cầu {updated_ticket.code}!')
             return redirect('ticket_detail', pk=ticket.pk)
     else:
-        form = TicketUpdateForm(instance=ticket)
+        form = TicketUpdateForm(instance=ticket, user=request.user) if can_update else None
 
     return render(
         request,
         'helpdesk/ticket_detail.html',
-        {'ticket': ticket, 'form': form, 'histories': histories},
+        {
+            'ticket': ticket,
+            'form': form,
+            'histories': histories,
+            'can_update': can_update,
+        },
     )
