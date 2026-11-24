@@ -1,0 +1,54 @@
+{% extends 'helpdesk/base.html' %}
+
+{% block title %}Đăng nhập - IT Helpdesk{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3 text-center">
+                <h4 class="mb-0">Đăng nhập hệ thống</h4>
+            </div>
+            <div class="card-body">
+                {% if form.errors %}
+                <div class="alert alert-danger py-2 small">
+                    Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.
+                </div>
+                {% endif %}
+
+                <form method="post">
+                    {% csrf_token %}
+                    <!-- Giữ lại đường dẫn cũ để chuyển về sau khi đăng nhập -->
+                    <input type="hidden" name="next" value="{{ next }}">
+
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label fw-semibold">Tên đăng nhập</label>
+                        <input
+                            type="text"
+                            name="username"
+                            id="id_username"
+                            value="{{ form.username.value|default:'' }}"
+                            class="form-control"
+                            autofocus
+                            required
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_password" class="form-label fw-semibold">Mật khẩu</label>
+                        <input
+                            type="password"
+                            name="password"
+                            id="id_password"
+                            class="form-control"
+                            required
+                        >
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Đăng nhập</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

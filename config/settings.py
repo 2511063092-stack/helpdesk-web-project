@@ -134,3 +134,7 @@ MAILERS = {
 }
 
 AUTH_USER_MODEL = 'helpdesk.User'  # dùng bảng User tùy chỉnh có phân quyền 
+# Cấu hình điều hướng cho chức năng Đăng nhập / Đăng xuất
+LOGIN_URL = 'login'                # Trang chuyển tới khi chưa đăng nhập
+LOGIN_REDIRECT_URL = 'ticket_list' # Trang mở ra sau khi đăng nhập thành công
+LOGOUT_REDIRECT_URL = 'login'      # Trang quay về sau khi đăng xuất
