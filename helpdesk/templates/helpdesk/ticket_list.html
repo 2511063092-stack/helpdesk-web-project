@@ -1,0 +1,48 @@
+{% extends 'helpdesk/base.html' %}
+
+{% block title %}Danh sách yêu cầu - IT Helpdesk{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Danh sách yêu cầu hỗ trợ</h3>
+    <!-- Nút tạo yêu cầu sẽ gắn link ở bước sau -->
+    <a href="{% url 'ticket_create' %}" class="btn btn-success">+ Tạo yêu cầu mới</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Mã</th>
+                    <th>Tiêu đề</th>
+                    <th>Danh mục</th>
+                    <th>Người gửi</th>
+                    <th>Kỹ thuật viên</th>
+                    <th>Trạng thái</th>
+                    <th>Thời gian tạo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                <tr>
+                    <td class="fw-bold text-primary">{{ ticket.code }}</td>
+                    <td>{{ ticket.title }}</td>
+                    <td>{{ ticket.category.name }}</td>
+                    <td>{{ ticket.created_by.username }}</td>
+                    <td>{{ ticket.assigned_to.username|default:"Chưa giao" }}</td>
+                    <td><span class="badge bg-secondary">{{ ticket.get_status_display }}</span></td>
+                    <td>{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        Chưa có yêu cầu hỗ trợ nào.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
