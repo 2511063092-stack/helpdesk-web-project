@@ -5,8 +5,55 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3 class="mb-0">Danh sách yêu cầu hỗ trợ</h3>
-    <!-- Nút tạo yêu cầu sẽ gắn link ở bước sau -->
     <a href="{% url 'ticket_create' %}" class="btn btn-success">+ Tạo yêu cầu mới</a>
+</div>
+
+<!-- Thanh tìm kiếm và lọc (dùng GET vì chỉ đọc dữ liệu, không sửa Database) -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label for="id_q" class="form-label small fw-semibold mb-1">Tìm kiếm</label>
+                <input
+                    type="text"
+                    name="q"
+                    id="id_q"
+                    value="{{ q }}"
+                    class="form-control"
+                    placeholder="Nhập mã (VD: HD-002) hoặc tiêu đề..."
+                >
+            </div>
+
+            <div class="col-md-3">
+                <label for="id_status" class="form-label small fw-semibold mb-1">Trạng thái</label>
+                <select name="status" id="id_status" class="form-select">
+                    <option value="">-- Tất cả trạng thái --</option>
+                    {% for val, label in statuses %}
+                        <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label for="id_category" class="form-label small fw-semibold mb-1">Danh mục</label>
+                <select name="category" id="id_category" class="form-select">
+                    <option value="">-- Tất cả danh mục --</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if selected_category == cat.id %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-primary w-100">Lọc</button>
+                <a href="{% url 'ticket_list' %}" class="btn btn-outline-secondary">Xóa</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <div class="card shadow-sm">
@@ -26,7 +73,6 @@
             <tbody>
                 {% for ticket in tickets %}
                 <tr>
-                    <!-- Gắn link trỏ tới trang chi tiết theo ID của yêu cầu -->
                     <td class="fw-bold">
                         <a href="{% url 'ticket_detail' ticket.pk %}" class="text-decoration-none">
                             {{ ticket.code }}
@@ -42,7 +88,7 @@
                 {% empty %}
                 <tr>
                     <td colspan="7" class="text-center text-muted py-4">
-                        Chưa có yêu cầu hỗ trợ nào.
+                        Không tìm thấy yêu cầu hỗ trợ nào phù hợp.
                     </td>
                 </tr>
                 {% endfor %}

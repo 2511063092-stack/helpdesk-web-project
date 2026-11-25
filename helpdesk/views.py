@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import TicketCreateForm, TicketUpdateForm
-from .models import Notification, Ticket, TicketHistory, User
+from .models import Notification, Ticket, TicketHistory, User, Category
 
 
 def _is_manager(user):
@@ -36,17 +36,41 @@ def ticket_list(request):
         'category', 'created_by', 'assigned_to'
     ).order_by('-created_at')
 
+    # Bước 1: Áp dụng bộ lọc phân quyền trước để không lộ phiếu ngoài phạm vi
     user = request.user
     if not _is_manager(user):
         if user.role == User.Role.TECH:
-            # Kỹ thuật viên xem phiếu được giao HOẶC phiếu tự gửi
             tickets = tickets.filter(Q(assigned_to=user) | Q(created_by=user))
         else:
-            # Nhân viên chỉ xem phiếu do chính mình gửi
             tickets = tickets.filter(created_by=user)
 
-    return render(request, 'helpdesk/ticket_list.html', {'tickets': tickets})
+    # Bước 2: Đọc các điều kiện tìm kiếm và lọc từ thanh địa chỉ URL (GET)
+    q = request.GET.get('q', '').strip()
+    selected_status = request.GET.get('status', '')
+    category_param = request.GET.get('category', '')
 
+    if q:
+        # Tìm gần đúng theo Mã phiếu HOẶC Tiêu đề, không phân biệt hoa/thường
+        tickets = tickets.filter(Q(code__icontains=q) | Q(title__icontains=q))
+
+    if selected_status:
+        tickets = tickets.filter(status=selected_status)
+
+    # Kiểm tra isdigit() trước khi ép sang int để tránh lỗi nếu URL bị gõ sai
+    selected_category = int(category_param) if category_param.isdigit() else None
+    if selected_category:
+        tickets = tickets.filter(category_id=selected_category)
+
+    # Truyền lại giá trị đã chọn sang template để giữ nguyên trạng thái ô lọc
+    context = {
+        'tickets': tickets,
+        'categories': Category.objects.all(),
+        'statuses': Ticket.Status.choices,
+        'q': q,
+        'selected_status': selected_status,
+        'selected_category': selected_category,
+    }
+    return render(request, 'helpdesk/ticket_list.html', context)
 
 @login_required
 def ticket_create(request):
