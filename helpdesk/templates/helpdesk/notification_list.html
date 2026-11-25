@@ -1,0 +1,45 @@
+{% extends 'helpdesk/base.html' %}
+
+{% block title %}Thông báo - IT Helpdesk{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Thông báo của bạn</h3>
+
+    <!-- Chỉ hiện nút đánh dấu tất cả khi còn thông báo chưa đọc -->
+    {% if unread_notifications_count > 0 %}
+    <form method="post" action="{% url 'notification_mark_all_read' %}" class="m-0">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+            Đánh dấu tất cả đã đọc
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="card shadow-sm">
+    <div class="list-group list-group-flush">
+        {% for item in notifications %}
+        <!-- Bấm vào từng dòng sẽ gọi notification_read để đánh dấu đã đọc rồi mở phiếu -->
+        <a
+            href="{% url 'notification_read' item.pk %}"
+            class="list-group-item list-group-item-action {% if not item.is_read %}bg-light fw-semibold{% endif %}"
+        >
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    {% if not item.is_read %}
+                        <span class="badge bg-danger me-1">Mới</span>
+                    {% endif %}
+                    {{ item.message }}
+                </div>
+                <small class="text-muted ms-3">{{ item.created_at|date:"d/m/Y H:i" }}</small>
+            </div>
+        </a>
+        {% empty %}
+        <div class="list-group-item text-center text-muted py-4">
+            Bạn chưa có thông báo nào.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

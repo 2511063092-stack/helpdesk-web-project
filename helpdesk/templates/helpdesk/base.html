@@ -14,6 +14,14 @@
             <div class="d-flex align-items-center gap-3 ms-auto">
                 {% if user.is_authenticated %}
                     <a class="nav-link text-white" href="{% url 'ticket_list' %}">Danh sách yêu cầu</a>
+
+                    <!-- Chuông thông báo kèm số lượng chưa đọc từ Context Processor -->
+                    <a class="nav-link text-white d-flex align-items-center gap-1" href="{% url 'notification_list' %}">
+                        <span>Thông báo</span>
+                        {% if unread_notifications_count > 0 %}
+                            <span class="badge rounded-pill bg-danger">{{ unread_notifications_count }}</span>
+                        {% endif %}
+                    </a>
                     {% if user.is_staff %}
                         <a class="nav-link text-white" href="/admin/">Quản trị</a>
                     {% endif %}

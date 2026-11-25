@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from .forms import TicketCreateForm, TicketUpdateForm
 from .models import Notification, Ticket, TicketHistory, User, Category
@@ -147,6 +148,16 @@ def ticket_detail(request, pk):
                     message=f'Bạn vừa được phân công xử lý yêu cầu {updated_ticket.code}',
                 )
 
+            # Thông báo cho người gửi phiếu biết khi trạng thái xử lý thay đổi
+            if old_status != updated_ticket.status and updated_ticket.created_by != request.user:
+                Notification.objects.create(
+                    recipient=updated_ticket.created_by,
+                    ticket=updated_ticket,
+                    message=(
+                        f'Yêu cầu {updated_ticket.code} đã chuyển sang trạng thái '
+                        f'"{updated_ticket.get_status_display()}"'),
+                )
+
             messages.success(request, f'Đã cập nhật yêu cầu {updated_ticket.code}!')
             return redirect('ticket_detail', pk=ticket.pk)
     else:
@@ -162,3 +173,47 @@ def ticket_detail(request, pk):
             'can_update': can_update,
         },
     )
+
+@login_required
+def notification_list(request):
+    """Hiển thị danh sách thông báo của riêng tài khoản đang đăng nhập."""
+    notifications = (
+        Notification.objects.filter(recipient=request.user)
+        .select_related('ticket')
+        .order_by('-created_at')
+    )
+    return render(
+        request,
+        'helpdesk/notification_list.html',
+        {'notifications': notifications},
+    )
+
+
+@login_required
+def notification_read(request, pk):
+    """Đánh dấu 1 thông báo là đã đọc rồi chuyển thẳng sang trang chi tiết yêu cầu."""
+    # Ràng buộc recipient=request.user để ngăn đọc lén thông báo của người khác
+    notification = get_object_or_404(
+        Notification,
+        pk=pk,
+        recipient=request.user,
+    )
+    if not notification.is_read:
+        notification.is_read = True
+        notification.save(update_fields=['is_read'])
+
+    return redirect('ticket_detail', pk=notification.ticket_id)
+
+
+@login_required
+@require_POST
+def notification_mark_all_read(request):
+    """Đánh dấu toàn bộ thông báo chưa đọc của người dùng hiện tại thành đã đọc."""
+    # Dùng .update() để cập nhật hàng loạt trong 1 câu SQL duy nhất
+    Notification.objects.filter(
+        recipient=request.user,
+        is_read=False,
+    ).update(is_read=True)
+
+    messages.success(request, 'Đã đánh dấu tất cả thông báo là đã đọc.')
+    return redirect('notification_list')
