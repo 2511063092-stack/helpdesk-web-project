@@ -1,0 +1,168 @@
+{% extends 'helpdesk/base.html' %}
+
+{% block title %}Thống kê tổng quan - IT Helpdesk{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="mb-0">Thống kê tổng quan (Dashboard)</h3>
+        <small class="text-muted">Số liệu tính đến ngày {{ today|date:"d/m/Y" }}</small>
+    </div>
+    <a href="{% url 'ticket_list' %}" class="btn btn-outline-primary btn-sm">
+        &larr; Danh sách yêu cầu
+    </a>
+</div>
+
+<!-- Hàng 1: 4 thẻ chỉ số KPI -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-start border-primary border-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small">Tổng số yêu cầu</div>
+                <div class="fs-2 fw-bold text-primary">{{ stats.total }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-start border-warning border-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small">Mới tạo (Chưa giao)</div>
+                <div class="fs-2 fw-bold text-warning">{{ stats.new }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-start border-info border-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small">Đang xử lý</div>
+                <div class="fs-2 fw-bold text-info">{{ stats.in_progress }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="card shadow-sm border-start border-success border-4 h-100">
+            <div class="card-body">
+                <div class="text-muted small">Đã hoàn thành</div>
+                <div class="fs-2 fw-bold text-success">{{ stats.done }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hàng 2: Thống kê theo Danh mục và Kỹ thuật viên -->
+<div class="row g-4 mb-4">
+    <div class="col-md-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white fw-semibold">Yêu cầu theo Danh mục</div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Mã</th>
+                            <th>Tên danh mục</th>
+                            <th class="text-end">Số lượng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in by_category %}
+                        <tr>
+                            <td class="fw-semibold">{{ cat.code }}</td>
+                            <td>{{ cat.name }}</td>
+                            <td class="text-end">
+                                <span class="badge bg-primary rounded-pill">{{ cat.ticket_count }}</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-3">Chưa có danh mục nào.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white fw-semibold">Khối lượng công việc Kỹ thuật viên</div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tài khoản</th>
+                            <th class="text-center">Đang xử lý</th>
+                            <th class="text-center">Đã xong</th>
+                            <th class="text-center">Tổng được giao</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tech in by_tech %}
+                        <tr>
+                            <td class="fw-semibold">{{ tech.username }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-warning text-dark">{{ tech.open_assigned }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-success">{{ tech.done_assigned }}</span>
+                            </td>
+                            <td class="text-center fw-bold">{{ tech.total_assigned }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">Chưa có kỹ thuật viên nào.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hàng 3: Cảnh báo các yêu cầu quá hạn xử lý -->
+<div class="card shadow-sm border-danger">
+    <div class="card-header bg-danger text-white fw-semibold">
+        Yêu cầu quá hạn xử lý ({{ overdue_tickets|length }})
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Mã</th>
+                    <th>Tiêu đề</th>
+                    <th>Danh mục</th>
+                    <th>Kỹ thuật viên</th>
+                    <th>Trạng thái</th>
+                    <th>Hạn xử lý</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in overdue_tickets %}
+                <tr>
+                    <td class="fw-bold">
+                        <a href="{% url 'ticket_detail' ticket.pk %}" class="text-decoration-none">
+                            {{ ticket.code }}
+                        </a>
+                    </td>
+                    <td>{{ ticket.title }}</td>
+                    <td>{{ ticket.category.name }}</td>
+                    <td>{{ ticket.assigned_to.username|default:"Chưa giao" }}</td>
+                    <td><span class="badge bg-secondary">{{ ticket.get_status_display }}</span></td>
+                    <td class="text-danger fw-semibold">{{ ticket.due_date|date:"d/m/Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-success py-3">
+                        Tuyệt vời! Hiện không có yêu cầu nào bị quá hạn xử lý.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

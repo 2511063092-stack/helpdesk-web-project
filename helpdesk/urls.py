@@ -22,4 +22,6 @@ urlpatterns = [
     path('notifications/', views.notification_list, name='notification_list'),
     path('notifications/<int:pk>/read/', views.notification_read, name='notification_read'),
     path('notifications/read-all/', views.notification_mark_all_read, name='notification_mark_all_read'),
+    # Trang thống kê tổng quan cho Quản lý
+    path('dashboard/', views.dashboard, name='dashboard'),
 ]

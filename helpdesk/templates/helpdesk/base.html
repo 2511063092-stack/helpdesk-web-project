@@ -22,6 +22,10 @@
                             <span class="badge rounded-pill bg-danger">{{ unread_notifications_count }}</span>
                         {% endif %}
                     </a>
+                    <!-- Chỉ Quản lý hoặc Superuser mới thấy menu Thống kê -->
+                    {% if user.is_superuser or user.role == 'MANAGER' %}
+                        <a class="nav-link text-white" href="{% url 'dashboard' %}">Thống kê</a>
+                    {% endif %}
                     {% if user.is_staff %}
                         <a class="nav-link text-white" href="/admin/">Quản trị</a>
                     {% endif %}

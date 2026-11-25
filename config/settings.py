@@ -68,6 +68,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # Tự động bơm biến unread_notifications_count vào mọi file HTML
+                'helpdesk.context_processors.unread_notifications',
             ],
         },
     },

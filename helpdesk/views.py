@@ -1,10 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
-
+from django.utils import timezone
 from .forms import TicketCreateForm, TicketUpdateForm
 from .models import Notification, Ticket, TicketHistory, User, Category
 
@@ -217,3 +217,74 @@ def notification_mark_all_read(request):
 
     messages.success(request, 'Đã đánh dấu tất cả thông báo là đã đọc.')
     return redirect('notification_list')
+
+@login_required
+def dashboard(request):
+    """Trang thống kê tổng quan hệ thống (chỉ dành cho Quản lý / Superuser)."""
+    # Lớp bảo vệ Backend: chặn Nhân viên và Kỹ thuật viên gõ thẳng URL /dashboard/
+    if not _is_manager(request.user):
+        raise PermissionDenied('Chỉ Quản lý mới có quyền xem trang thống kê.')
+
+    # 1. Tính 4 chỉ số tổng quan (KPI) trong đúng 1 câu truy vấn SQL
+    stats = Ticket.objects.aggregate(
+        total=Count('id'),
+        new=Count('id', filter=Q(status=Ticket.Status.NEW)),
+        in_progress=Count(
+            'id',
+            filter=Q(status__in=[Ticket.Status.ASSIGNED, Ticket.Status.IN_PROGRESS]),
+        ),
+        done=Count(
+            'id',
+            filter=Q(status__in=[Ticket.Status.RESOLVED, Ticket.Status.CLOSED]),
+        ),
+    )
+
+    # 2. Đếm số lượng yêu cầu theo từng Danh mục (dùng related_name='tickets')
+    by_category = Category.objects.annotate(
+        ticket_count=Count('tickets')
+    ).order_by('-ticket_count')
+
+    # 3. Thống kê khối lượng công việc theo từng Kỹ thuật viên / Quản lý
+    by_tech = (
+        User.objects.filter(role__in=[User.Role.TECH, User.Role.MANAGER])
+        .annotate(
+            total_assigned=Count('assigned_tickets'),
+            open_assigned=Count(
+                'assigned_tickets',
+                filter=Q(
+                    assigned_tickets__status__in=[
+                        Ticket.Status.ASSIGNED,
+                        Ticket.Status.IN_PROGRESS,
+                    ]
+                ),
+            ),
+            done_assigned=Count(
+                'assigned_tickets',
+                filter=Q(
+                    assigned_tickets__status__in=[
+                        Ticket.Status.RESOLVED,
+                        Ticket.Status.CLOSED,
+                    ]
+                ),
+            ),
+        )
+        .order_by('-open_assigned', '-total_assigned')
+    )
+
+    # 4. Lọc các phiếu quá hạn (hạn xử lý < hôm nay và chưa Giải quyết / Đóng)
+    today = timezone.localdate()
+    overdue_tickets = (
+        Ticket.objects.select_related('category', 'assigned_to')
+        .filter(due_date__lt=today)
+        .exclude(status__in=[Ticket.Status.RESOLVED, Ticket.Status.CLOSED])
+        .order_by('due_date')
+    )
+
+    context = {
+        'stats': stats,
+        'by_category': by_category,
+        'by_tech': by_tech,
+        'overdue_tickets': overdue_tickets,
+        'today': today,
+    }
+    return render(request, 'helpdesk/dashboard.html', context)
